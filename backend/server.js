@@ -28,7 +28,9 @@ connectDB();
 // Middleware to handle CORS
 app.use(
   cors({
-    origin: "*",
+    origin: process.env.NODE_ENV === 'production' 
+      ? ["https://your-vercel-app.vercel.app"] // Replace with your actual Vercel domain
+      : "*", // Allow all origins in development
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
