@@ -34,19 +34,15 @@ const DocumentDetailPage = () => {
   }, [id]);
 
   // Helper function to get the full PDF URL
-  const getPdfUrl = () => {
-    if (!document?.data?.filePath) return null;
-
-    const filePath = document.data.filePath;
-
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      return filePath;
-    }
-
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-    return `${baseUrl}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
-  };
-
+ const getPdfUrl = () => {
+  if (!document?.data?.filePath) return null;
+  const filePath = document.data.filePath;
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'; // ← fix
+  const encodedPath = filePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `${baseUrl}${encodedPath.startsWith('/') ? '' : '/'}${encodedPath}`;
+};
   const renderContent = () => {
     if (loading) {
       return <Spinner />;
