@@ -28,14 +28,16 @@ connectDB();
 // Middleware to handle CORS
 app.use(
   cors({
-    origin: process.env.NODE_ENV === 'production' 
-      ? ["https://your-vercel-app.vercel.app"] // Replace with your actual Vercel domain
-      : "*", // Allow all origins in development
+    origin: process.env.NODE_ENV === 'production'
+      ? ['https://novus-learning-delta.vercel.app/']  // ← your actual Vercel URL
+      : 'http://localhost:5173',
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+
+app.options(/.*/, cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

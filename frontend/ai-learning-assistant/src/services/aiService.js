@@ -22,12 +22,11 @@ const generateQuiz = async (documentId, options) => {
 const generateSummary = async (documentId) => {
   try {
     const response = await axiosInstance.post(API_PATHS.AI.GENERATE_SUMMARY, { documentId });
-    return response.data;
+    return response.data?.data; // ← add ?.data
   } catch (error) {
     throw error.response?.data || { message: 'Failed to generate summary' };
   }
 };
-
 const chat = async (documentId, message) => {
   try {
     const response = await axiosInstance.post(API_PATHS.AI.CHAT, { documentId, question: message }); // Removed history from payload
