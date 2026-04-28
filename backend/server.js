@@ -28,9 +28,9 @@ connectDB();
 // Middleware to handle CORS
 app.use(
   cors({
-    origin: process.env.NODE_ENV === 'production'
-      ? ['https://novus-learning-delta.vercel.app/']  // ← your actual Vercel URL
-      : 'http://localhost:5173',
+    origin: process.env.NODE_ENV === 'production' 
+      ? ["https://novus-learning-delta.vercel.app"] // Replace with your actual Vercel domain
+      : "*", // Allow all origins in development
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -42,6 +42,10 @@ app.options(/.*/, cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 // Static folder for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

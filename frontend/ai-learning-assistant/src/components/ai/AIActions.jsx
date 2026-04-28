@@ -14,18 +14,22 @@ const AIActions = () => {
   const [concept, setConcept] = useState("");
 
   const handleGenerateSummary = async () => {
-    setLoadingAction("summary");
-    try {
-      const { summary } = await aiService.generateSummary(documentId);
-      setModalTitle("Generated Summary");
-      setModalContent(summary);
-      setIsModalOpen(true);
-    } catch (error) {
-      toast.error("Failed to generate summary.");
-    } finally {
-      setLoadingAction(null);
-    }
-  };
+  setLoadingAction("summary");
+
+  try {
+    const response = await aiService.generateSummary(documentId);
+    const summary = response.data.summary;
+
+    setModalTitle("Generated Summary");
+    setModalContent(summary);
+    setIsModalOpen(true);
+
+  } catch (error) {
+    toast.error("Failed to generate summary.");
+  } finally {
+    setLoadingAction(null);
+  }
+};
 
   const handleExplainConcept = async (e) => {
     e.preventDefault();
