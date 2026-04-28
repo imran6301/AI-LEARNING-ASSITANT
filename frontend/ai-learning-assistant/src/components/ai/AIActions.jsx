@@ -18,7 +18,7 @@ const AIActions = () => {
 
   try {
     const response = await aiService.generateSummary(documentId);
-    const summary = response.data.summary;
+const summary = response.summary;
 
     setModalTitle("Generated Summary");
     setModalContent(summary);
