@@ -11,10 +11,28 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 /**
+ * Call a Gemini-hitting function with retry + exponential backoff on transient errors.
+ * Retries on 503 (overloaded) and 429 (rate limited).
+ */
+const callGeminiWithRetry = async (fn, maxRetries = 3) => {
+  let lastError;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const isRetryable = error.status === 503 || error.status === 429;
+      if (!isRetryable || attempt === maxRetries - 1) throw error;
+      const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+      console.warn(`Gemini call failed (status ${error.status}), retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise(res => setTimeout(res, delay));
+    }
+  }
+  throw lastError;
+};
+
+/**
  * Generate flashcards from text
- * @param {string} text - Document text
- * @param {number} count - Number of flashcards to generate
- * @returns {Promise<Array<{question: string, answer: string, difficulty: string}>>}
  */
 export const generateFlashcards = async (text, count = 10) => {
   const prompt = `Generate exactly ${count} educational flashcards from the following text.
@@ -29,14 +47,15 @@ Text:
 ${text.substring(0, 15000)}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt,
-    });
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt,
+      })
+    );
 
     const generatedText = response.text;
 
-    // Parse the response
     const flashcards = [];
     const cards = generatedText.split('----').filter(c => c.trim());
 
@@ -65,15 +84,14 @@ ${text.substring(0, 15000)}`;
     return flashcards.slice(0, count);
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('Failed to generate flashcards');
+    const err = new Error('Failed to generate flashcards');
+    err.status = error.status || 500;
+    throw err;
   }
 };
 
 /**
  * Generate quiz questions
- * @param {string} text - Document text
- * @param {number} numQuestions - Number of questions
- * @returns {Promise<Array<{question: string, options: Array, correctAnswer: string, explanation: string, difficulty: string}>>}
  */
 export const generateQuiz = async (text, numQuestions = 5) => {
   const prompt = `Generate exactly ${numQuestions} multiple choice questions from the following text.
@@ -93,10 +111,12 @@ Text:
 ${text.substring(0, 15000)}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt,
-    });
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt,
+      })
+    );
 
     const generatedText = response.text;
 
@@ -133,14 +153,14 @@ ${text.substring(0, 15000)}`;
     return questions.slice(0, numQuestions);
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('Failed to generate quiz');
+    const err = new Error('Failed to generate quiz');
+    err.status = error.status || 500;
+    throw err;
   }
 };
 
 /**
  * Generate document summary
- * @param {string} text - Document text
- * @returns {Promise<string>}
  */
 export const generateSummary = async (text) => {
   const prompt = `Provide a concise summary of the following text, highlighting the key concepts, main ideas, and important points.
@@ -150,23 +170,23 @@ Text:
 ${text.substring(0, 20000)}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt,
-    });
-    const generatedText = response.text;
-    return generatedText;
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt,
+      })
+    );
+    return response.text;
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('Failed to generate summary');
+    const err = new Error('Failed to generate summary');
+    err.status = error.status || 500;
+    throw err;
   }
 };
 
 /**
  * Chat with document context
- * @param {string} question - User question
- * @param {Array<Object>} chunks - Relevant document chunks
- * @returns {Promise<string>}
  */
 export const chatWithContext = async (question, chunks) => {
   const context = chunks.map((c, i) => `[Chunk ${i + 1}]\n${c.content}`).join('\n\n');
@@ -182,23 +202,23 @@ Question: ${question}
 Answer:`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt,
-    });
-    const generatedText = response.text;
-    return generatedText;
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt,
+      })
+    );
+    return response.text;
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('Failed to process chat request');
+    const err = new Error('Failed to process chat request');
+    err.status = error.status || 500;
+    throw err;
   }
 };
 
 /**
  * Explain a specific concept
- * @param {string} concept - Concept to explain
- * @param {string} context - Relevant context
- * @returns {Promise<string>}
  */
 export const explainConcept = async (concept, context) => {
   const prompt = `Explain the concept of "${concept}" based on the following context.
@@ -209,14 +229,17 @@ Context:
 ${context.substring(0, 10000)}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt,
-    });
-    const generatedText = response.text;
-    return generatedText;
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt,
+      })
+    );
+    return response.text;
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('Failed to explain concept');
+    const err = new Error('Failed to explain concept');
+    err.status = error.status || 500;
+    throw err;
   }
 };
